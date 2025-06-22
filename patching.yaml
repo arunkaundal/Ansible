@@ -1,0 +1,56 @@
+---
+## Ansible PlauBook for OS Patching for RHEL servers
+
+- name: Play book for Patching
+  hosts: DB
+  user: sluadmin
+  become: yes
+
+
+
+  tasks:
+    - name: Check for the Application & DB  running or stopped
+      shell: if ps -elf |grep -E 'websphere|httpd'|grep -v grep > /dev/null;then echo "process_running";else echo "process_not_running";fi
+      ignore_errors: true
+      register: process_check
+
+
+
+    - name: Decesion making for proceed with patching
+      fail:
+       msg: "{{ inventory_hostname }} the process is up and running,please stop the process."
+      when: process_check.stdout == "process_running"
+
+
+    - name: Start the upgrade
+      yum:
+       name: "kernel"
+       state: latest
+      ignore_errors: true
+      register: yum_update
+      when: process_check == "process_not_running"
+
+    - name: Server Reboot required
+      shell: KERNEL_NEW=$(rpm -q --last kernel|head -1|awk '{print $1}'|sed 's/kernel-//');KERNEL_OLD=$(uname -r);if [[ $KERNEL_NEW != $KERNEL_OLD ]];then echo "reboot_required";else echo "reboot_not_required";fi
+      register: reboot_status
+      ignore_errors: true
+
+
+    - name: System reboot
+      command: shutdown -r +1
+      when: reboot_status.stdout == "reboot_required"
+
+    - name: pause the tasks for 180 secs
+      pause:
+        minutes: 3
+     
+
+    - name: Server up aftter reboot
+      shell: uptime
+      register: uptime_check
+
+    - name: print server uptime
+      debug:
+        msg: " {{ uptime_check.stdout }} server is up and running after patching."
+       
+
