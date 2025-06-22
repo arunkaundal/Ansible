@@ -1,0 +1,18 @@
+---
+## Server service check 
+- name: SSHD service status check
+  hosts: DB
+  user: sluadmin
+  become: yes
+ 
+
+  tasks:
+    - name: To check the status for SSHD service
+      systemd: systemctl status sshd
+      enabled: yes
+      register: sshd_check
+  
+
+    - name: Print sshd status
+      debug:
+        msg: " {{ sshd_check.stdout }}"
